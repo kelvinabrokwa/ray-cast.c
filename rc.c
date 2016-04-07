@@ -5,29 +5,40 @@
 
 int main() {
     OBJ_T *list = NULL;
+    OBJ_T *curr;
     read_objs(&list);
-    OBJ_T *curr = list;
     COLOR_T pixel;
     RAY_T ray;
     double t;
-    ray.origin.x = 0, ray.origin.y = 0, ray.origin.z = 0;
     int x, y;
+    int intersects = 0;
+    ray.origin.x = 0, ray.origin.y = 0, ray.origin.z = 0;
+    printf("P6\n1000 1000\n255\n"); // write ppm header
     for (y = 0; y < 1000; y++) {
         for (x = 0; x < 1000; x++) {
-            // set ray
             ray.direction.x = -0.5 + x / 1000.0;
             ray.direction.y = 0.5 - y / 1000.0;
             ray.direction.z = 1;
-
             ray.direction = normalize(ray.direction);
-
-            if (intersect_sphere(ray, curr->sphere, &t)) {
-                pixel = curr->color;
+            curr = list;
+            for (curr = list; curr != NULL; curr = curr->next) {
+                if (intersect_sphere(ray, curr->sphere, &t)) {
+                    intersects = 1;
+                    break;
+                }
             }
-            printf("%c %c %c", (unsigned char)(pixel.r*255), (unsigned char)(pixel.g*255), (unsigned char)(pixel.b*255));
-
+            if (intersects) {
+                pixel = cast(ray, list);
+            } else {
+                pixel.r = 1.;
+                pixel.g = 1.;
+                pixel.b = 1.;
+            }
+            printf("%c%c%c", (unsigned char)(pixel.r*255), (unsigned char)(pixel.g*255), (unsigned char)(pixel.b*255));
+            intersects = 0;
         }
     }
+    // remember to gc
 }
 
 COLOR_T cast(RAY_T ray, OBJ_T *list) {
@@ -49,18 +60,22 @@ COLOR_T cast(RAY_T ray, OBJ_T *list) {
 int intersect_sphere(RAY_T ray, SPHERE_T sphere, double *t) {
     double A, B, C;
     A = 1;
-    B = 2 * ((ray.origin.x * (ray.origin.x - sphere.center.x)) +
-             (ray.origin.y * (ray.origin.y - sphere.center.y)) +
-             (ray.origin.z * (ray.origin.z - sphere.center.z)));
+    B = 2 * ((ray.direction.x * (ray.origin.x - sphere.center.x)) +
+             (ray.direction.y * (ray.origin.y - sphere.center.y)) +
+             (ray.direction.z * (ray.origin.z - sphere.center.z)));
     C = pow(ray.origin.x - sphere.center.x, 2) +
         pow(ray.origin.y - sphere.center.y, 2) +
-        pow(ray.origin.z - sphere.center.z, 2);
+        pow(ray.origin.z - sphere.center.z, 2) -
+        pow(sphere.radius, 2);
     double discriminant = pow(B, 2) - 4*A*C;
     if (discriminant < 0) {
         return 0;
     }
-    float t_0 = -B + sqrt(discriminant) / 2*A;
-    float t_1 = -B - sqrt(discriminant) / 2*A;
+    float t_0 = (-B + sqrt(discriminant)) / 2*A;
+    float t_1 = (-B - sqrt(discriminant)) / 2*A;
+    if (t_0 < 0 && t_1 < 0) {
+        return 0;
+    }
     *t = t_0 < t_1 ? t_0 : t_1;
     return 1;
 }
