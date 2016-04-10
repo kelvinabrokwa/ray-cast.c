@@ -11,34 +11,25 @@ int main() {
     RAY_T ray;
     double t;
     int x, y;
-    int intersects = 0;
     ray.origin.x = 0, ray.origin.y = 0, ray.origin.z = 0;
+    ray.direction.z = 1;
     printf("P6\n1000 1000\n255\n"); // write ppm header
     for (y = 0; y < 1000; y++) {
         for (x = 0; x < 1000; x++) {
             ray.direction.x = -0.5 + x / 1000.0;
             ray.direction.y = 0.5 - y / 1000.0;
-            ray.direction.z = 1;
             ray.direction = normalize(ray.direction);
             curr = list;
-            for (curr = list; curr != NULL; curr = curr->next) {
-                if (intersect_sphere(ray, curr->sphere, &t)) {
-                    intersects = 1;
-                    break;
-                }
-            }
-            if (intersects) {
-                pixel = cast(ray, list);
-            } else {
-                pixel.r = 1.;
-                pixel.g = 1.;
-                pixel.b = 1.;
-            }
+            pixel = cast(ray, list);
             printf("%c%c%c", (unsigned char)(pixel.r*255), (unsigned char)(pixel.g*255), (unsigned char)(pixel.b*255));
-            intersects = 0;
         }
     }
-    // remember to gc
+    // gc
+    while (list != NULL) {
+        curr = list;
+        list = list->next;
+        free(curr);
+    }
 }
 
 COLOR_T cast(RAY_T ray, OBJ_T *list) {
@@ -46,6 +37,9 @@ COLOR_T cast(RAY_T ray, OBJ_T *list) {
     double min_t = 1000; // no bueno
     double t;
     COLOR_T color;
+    color.r = 1.;
+    color.g = 1.;
+    color.b = 1.;
     for (curr = list; curr != NULL; curr = curr->next) {
         if (intersect_sphere(ray, curr->sphere, &t)) {
             if (t < min_t) {
